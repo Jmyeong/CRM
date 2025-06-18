@@ -1,0 +1,21 @@
+- camera: zed2i
+- image_width: 640
+- image_height: 360
+- distortion_parameters:
+  - k1: 0
+  - k2: 0
+  - t1: 0
+  - t2: 0
+  - k3: 0
+- intrinsic_parameters:
+  - fx: 260.8747863769531
+  - fy: 260.8747863769531
+  - cx: 321.9953308105469
+  - cy: 179.68511962890625
+- extrinsic_parameters:
+  - roll: -0.6897
+  - pitch: 0.0769
+  - yaw: -0.5004 
+  - x: 0.6773
+  - y: -0.2229
+  - z: 0.3020
