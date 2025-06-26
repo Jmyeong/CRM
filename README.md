@@ -1,4 +1,5 @@
-# Sonata
+# CRM
+## Knowledge Distillation with Context-aware Refinement for Self-Supervised Depth Estimation in Transparent Environments
 **TL;DR:** This repo provide self-supervised pre-trained [Point Transformer V3](https://github.com/Pointcept/PointTransformerV3) for 3D point cloud downstream tasks.
 
 This repo is the official project repository of the paper **_Sonata: Self-Supervised Learning of Reliable Point Representations_** and is mainly used for providing pre-trained models, inference code and visualization demo. For reproduce pre-training process of Sonata, please refer to our **[Pointcept](https://github.com/Pointcept/Pointcept)** codebase.
