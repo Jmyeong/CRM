@@ -2,7 +2,7 @@
 
 ### This repo provide training code for self-supervised depth estimation: dealing with transparent objects especially glass doors
 
-This repo is the official project repository of the paper **Knowledge Distillation with Context-aware Refinement for Self-Supervised Depth Estimation in Transparent Environments** and is mainly used for providing training, inference code and visualization demo. 
+This repo is the official project repository of the paper **Knowledge Distillation with Context-aware Refinement for Self-Supervised Depth Estimation in Transparent Environments** and is mainly used for providing training, inference code and visualization demo.,<br>
 [ **CRM** ] - [ [Paper](**in submission now**😊) ]
 
 <div align='left'>
