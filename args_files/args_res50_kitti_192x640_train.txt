@@ -1,0 +1,21 @@
+--data_path /ssd1/jm_data/depth/ssl/monodepth2/jbnu_stereo
+--dataset kitti 
+--eval_split jbnu_stereo 
+--height 352 
+--width 640
+--batch_size 8
+--num_epochs 25
+--model_dim 64
+--patch_size 16
+--query_nums 120
+--scheduler_step_size 15
+--eval_stereo
+--load_weights_folder /ssd1/jm_data/depth/ssl/SfMNeXt-Impl/logs/mdp/models/weights_19/
+--min_depth 0.001
+--max_depth 50.0
+--use_stereo
+--log_dir ./logs 
+--log_frequency 250
+--split jbnu_stereo
+--model_name jbnu_stereo_test 
+--frame_ids 0
