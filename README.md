@@ -9,7 +9,7 @@ This repo is the official project repository of the paper **Knowledge Distillati
 <img src="https://github.com/Jmyeong/CRM/blob/main/images/Overview.png" alt="overview" width="800" />
 </div>
 
-
+## Highlights
 - *Apr, 2025* 🚀: **Sonata** is selected as one of the **Highlight** presentation (3.0% submissions) of CVPR 2025!
 - *Mar, 2025* : **Sonata** is accepted by CVPR 2025! We release the pre-training code along with **[Pointcept](https://github.com/Pointcept/Pointcept)** v1.6.0 and provide an easy-to-use inference demo and visualization with our pre-trained model weight in this repo. We highly recommend user begin with is repo for **[quick start](#quick-start)**.
 
