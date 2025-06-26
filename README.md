@@ -20,6 +20,13 @@ This repo is the official project repository of the paper **Knowledge Distillati
   pip install -r requirements.txt
   ```
 
+## Preparation
+-  
+Before start our code, you should prepare mask images of the datasets.
+We use Grounded-SAM (https://github.com/IDEA-Research/Grounded-Segment-Anything)
+ ```bash
+
+ ```
 
 ## Quick Start
 ***Let's first begin with some simple visualization demo with Sonata, our pre-trained PTv3 model:***
