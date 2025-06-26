@@ -5,13 +5,8 @@
 This repo is the official project repository of the paper **Knowledge Distillation with Context-aware Refinement for Self-Supervised Depth Estimation in Transparent Environments** and is mainly used for providing training, inference code and visualization demo. 
 [ **CRM** ] - [ [Paper](**in submission now**) ]
 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/sonata-self-supervised-learning-of-reliable/semantic-segmentation-on-scannet)](https://paperswithcode.com/sota/semantic-segmentation-on-scannet?p=sonata-self-supervised-learning-of-reliable)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/sonata-self-supervised-learning-of-reliable/semantic-segmentation-on-s3dis)](https://paperswithcode.com/sota/semantic-segmentation-on-s3dis?p=sonata-self-supervised-learning-of-reliable)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/sonata-self-supervised-learning-of-reliable/semantic-segmentation-on-s3dis-area5)](https://paperswithcode.com/sota/semantic-segmentation-on-s3dis-area5?p=sonata-self-supervised-learning-of-reliable)
-
-
 <div align='left'>
-<img src="https://raw.githubusercontent.com/pointcept/assets/main/sonata/teaser.png" alt="teaser" width="800" />
+<img src="images/Overview.png" alt="overview" width="800" />
 </div>
 
 ## Highlights
