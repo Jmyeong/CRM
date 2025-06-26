@@ -1,6 +1,6 @@
 # CRM
 ## Knowledge Distillation with Context-aware Refinement for Self-Supervised Depth Estimation in Transparent Environments
-This repo provide training code for self-supervised depth estimation: dealing with transparent objects especially glass doors
+### This repo provide training code for self-supervised depth estimation: dealing with transparent objects especially glass doors
 
 This repo is the official project repository of the paper **_Sonata: Self-Supervised Learning of Reliable Point Representations_** and is mainly used for providing pre-trained models, inference code and visualization demo. For reproduce pre-training process of Sonata, please refer to our **[Pointcept](https://github.com/Pointcept/Pointcept)** codebase.
 [ **Pretrain** ] [ **Sonata** ] - [ [Homepage](https://xywu.me/sonata/) ] [ [Paper](http://arxiv.org/abs/2503.16429) ] [ [Bib](#citation) ]
