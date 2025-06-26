@@ -38,13 +38,6 @@ class silog_loss(nn.Module):
         d = torch.log(depth_est) - torch.log(depth_gt)
         return torch.sqrt((d ** 2).mean() - self.variance_focus * (d.mean() ** 2)) * 10.0
 
-def l2_loss(pred, target, mask=None):
-    if mask is not None:
-        diff = (pred - target)[mask]
-    else:
-        diff = pred - target
-    return torch.mean(diff ** 2)
-
 class Trainer:
     def __init__(self, options):
         self.opt = options
@@ -384,13 +377,10 @@ class Trainer:
                 
                 l2_valid_mask = inputs["mask", scale]
                 l2_valid_mask = l2_valid_mask.bool()
-                l2loss = l2_loss(disp[l2_valid_mask], gt[l2_valid_mask]) * 20.0
-                print(l2loss)
-                l2loss = 0.0
+
 
             else:
                 gt = pseudo_gt[("disp", scale)]
-                l2loss = 0.0
                 
             mask = gt > 0
             valid_mask = mask & (disp > 0)
@@ -402,8 +392,8 @@ class Trainer:
             # print(valid_mask.shape, inputs["mask", scale].shape)
             # print(torch.unique(inputs["mask", scale]))
             # print(disp.shape, gt.shape)
-            total_loss += (loss + l2loss)
-            losses[("loss", scale)] = (loss + l2loss)
+            total_loss += loss
+            losses[("loss", scale)] = loss
 
         losses["loss"] = total_loss / self.num_scales
         return outputs, pseudo_gt, losses
