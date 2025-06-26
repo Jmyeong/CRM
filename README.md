@@ -20,26 +20,6 @@ This repo is the official project repository of the paper **Knowledge Distillati
   pip install -r requirements.txt
   ```
 
-  *We install **FlashAttention** by default, yet not necessary. If FlashAttention is not available in your local environment, it's okay, check Model section in [Quick Start](#quick-start) for solution.*
-
-- The **package mode** is recommended for users who want to inject our model into their own codebase. We provide a `setup.py` file for installation. You can install the package by running the following command:
-  ```bash
-  # Ensure Cuda and Pytorch are already installed in your local environment
-
-  # CUDA_VERSION: cuda version of local environment (e.g., 124), check by running 'nvcc --version'
-  # TORCH_VERSION: torch version of local environment (e.g., 2.5.0), check by running 'python -c "import torch; print(torch.__version__)"'
-  pip install spconv-cu${CUDA_VERSION}
-  pip install torch-scatter -f https://data.pyg.org/whl/torch-{TORCH_VERSION}+cu${CUDA_VERSION}.html
-  pip install git+https://github.com/Dao-AILab/flash-attention.git
-  pip install huggingface_hub timm
-
-  # (optional, or directly copy the sonata folder to your project)
-  python setup.py install
-  ```
-  Additionally, for running our **demo code**, the following packages are also required:
-  ```bash
-  pip install open3d fast_pytorch_kmeans psutil numpy==1.26.4  # currently, open3d does not support numpy 2.x
-  ```
 
 ## Quick Start
 ***Let's first begin with some simple visualization demo with Sonata, our pre-trained PTv3 model:***
