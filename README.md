@@ -3,7 +3,7 @@
 ### This repo provide training code for self-supervised depth estimation: dealing with transparent objects especially glass doors
 
 This repo is the official project repository of the paper **Knowledge Distillation with Context-aware Refinement for Self-Supervised Depth Estimation in Transparent Environments** and is mainly used for providing training, inference code and visualization demo. 
-[ **Pretrain** ] [ **Sonata** ] - [ [Homepage](https://xywu.me/sonata/) ] [ [Paper](http://arxiv.org/abs/2503.16429) ] [ [Bib](#citation) ]
+[ **CRM** ] - [ [Paper](**in submission now**) ]
 
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/sonata-self-supervised-learning-of-reliable/semantic-segmentation-on-scannet)](https://paperswithcode.com/sota/semantic-segmentation-on-scannet?p=sonata-self-supervised-learning-of-reliable)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/sonata-self-supervised-learning-of-reliable/semantic-segmentation-on-s3dis)](https://paperswithcode.com/sota/semantic-segmentation-on-s3dis?p=sonata-self-supervised-learning-of-reliable)
