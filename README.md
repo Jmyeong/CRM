@@ -3,15 +3,11 @@
 ### This repo provide training code for self-supervised depth estimation: dealing with transparent objects especially glass doors
 
 This repo is the official project repository of the paper **Knowledge Distillation with Context-aware Refinement for Self-Supervised Depth Estimation in Transparent Environments** and is mainly used for providing training, inference code and visualization demo. 
-[ **CRM** ] - [ [Paper](**in submission now**) ]
+[ **CRM** ] - [ [Paper](**in submission now**😊) ]
 
 <div align='left'>
 <img src="https://github.com/Jmyeong/CRM/blob/main/images/Overview.png" alt="overview" width="800" />
 </div>
-
-## Highlights
-- *Apr, 2025* 🚀: **Sonata** is selected as one of the **Highlight** presentation (3.0% submissions) of CVPR 2025!
-- *Mar, 2025* : **Sonata** is accepted by CVPR 2025! We release the pre-training code along with **[Pointcept](https://github.com/Pointcept/Pointcept)** v1.6.0 and provide an easy-to-use inference demo and visualization with our pre-trained model weight in this repo. We highly recommend user begin with is repo for **[quick start](#quick-start)**.
 
 ## Overview
 - [Installation](#installation)
@@ -19,8 +15,7 @@ This repo is the official project repository of the paper **Knowledge Distillati
 - [Citation](#citation)
 
 ## Installation
-This repo provide two ways of installation: **standalone mode** and **package mode**.
-- The **standalone mode** is recommended for users who want to use the code for quick inference and visualization. We provide a most easy way to install the environment by using `conda` environment file. The whole environment including `cuda` and `pytorch` can be easily installed by running the following command:
+-  
   ```bash
   # Create and activate conda environment named as 'sonata'
   # cuda: 12.4, pytorch: 2.5.0
