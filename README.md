@@ -6,9 +6,8 @@ This repo is the official project repository of the paper **Knowledge Distillati
 [ **CRM** ] - [ [Paper](**in submission now**) ]
 
 <div align='left'>
-<img src="images/Overview.png" alt="overview" width="800" />
+<img src="https://github.com/Jmyeong/CRM/blob/main/images/Overview.png" alt="overview" width="800" />
 </div>
-![Sample](images/Overview.png)
 
 ## Highlights
 - *Apr, 2025* 🚀: **Sonata** is selected as one of the **Highlight** presentation (3.0% submissions) of CVPR 2025!
