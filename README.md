@@ -17,12 +17,7 @@ This repo is the official project repository of the paper **Knowledge Distillati
 ## Installation
 -  
   ```bash
-  # Create and activate conda environment named as 'sonata'
-  # cuda: 12.4, pytorch: 2.5.0
-
-  # run `unset CUDA_PATH` if you have installed cuda in your local environment
-  conda env create -f environment.yml --verbose
-  conda activate sonata
+  pip install -r requirements.txt
   ```
 
   *We install **FlashAttention** by default, yet not necessary. If FlashAttention is not available in your local environment, it's okay, check Model section in [Quick Start](#quick-start) for solution.*
