@@ -1,0 +1,12 @@
+--load_weights_folder /ssd1/jm_data/depth/ssl/SfMNeXt-Impl/logs/jbnu_stereo_resnet_320x1024_student_do_crm
+--image_path /ssd1/jm_data/depth/ssl/monodepth2/jbnu_stereo/2025_05_08/2025_05_08_drive_0008_sync/image_02/data
+--height 352 
+--width 640
+--model_dim 32
+--patch_size 16
+--dim_out 128
+--query_nums 128
+--min_depth 0.01
+--max_depth 50.0
+--ext png
+--use_stereo

@@ -1,0 +1,24 @@
+--data_path /ssd1/jm_data/depth/ssl/monodepth2/jbnu_stereo
+--log_dir ./logs
+--model_name jbnu_stereo_sqldepth
+--dataset kitti 
+--eval_split jbnu_stereo 
+--backbone convnext_large
+--height 352 
+--width 640
+--batch_size 8
+--num_epochs 20
+--scheduler_step_size 10
+--model_dim 32
+--patch_size 16
+--dim_out 64
+--query_nums 120
+--dec_channels 1024 512 256 128
+--min_depth 0.001
+--max_depth 50.0
+--diff_lr
+--use_stereo
+--eval_stereo
+--save_pred_disps
+--frame_ids 0
+--split jbnu_stereo

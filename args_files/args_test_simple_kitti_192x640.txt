@@ -1,0 +1,15 @@
+--load_weights_folder /ssd1/jm_data/depth/ssl/SfMNeXt-Impl/logs/mdp/models/weights_19/
+--image_path /ssd1/sz_data/sz_data/test_imgs/rgb/
+--height 352 
+--width 704
+--model_dim 64
+--patch_size 16
+--dim_out 100
+--query_nums 128
+--min_depth 0.001
+--max_depth 80.0
+--ext png
+--use_stereo
+
+
+

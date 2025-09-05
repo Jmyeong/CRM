@@ -1,0 +1,26 @@
+--data_path /ssd1/jm_data/depth/ssl/monodepth2/jbnu_stereo
+--log_dir ./logs
+--model_name jbnu_stereo_resnet_320x1024_student_no_crm
+--dataset jbnu_stereo 
+--eval_split jbnu_stereo
+--backbone resnet_lite
+--height 352
+--width 640
+--batch_size 8
+--num_epochs 25
+--scheduler_step_size 15
+--model_dim 32
+--patch_size 20
+--dim_out 128
+--query_nums 128
+--num_features 256
+--num_layers 50
+--min_depth 0.01
+--max_depth 50.0
+--diff_lr
+--use_stereo
+--frame_ids 0
+--eval_stereo
+--load_weights_folder ../SQLdepth_logs/jbnu_stereo_resnet_320x1024_student_no_crm/models/weights_24/
+--split jbnu_stereo
+--save_pred_disps
