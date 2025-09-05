@@ -343,7 +343,7 @@ class Trainer:
             outputs = self.models_student["depth"](features_S)
 
         total_loss = 0
-        do_crm = True
+        
         for scale in range(self.num_scales):
             disp = outputs[("disp", scale)]
             glass_mask = inputs["mask"]
@@ -362,23 +362,22 @@ class Trainer:
                     K_bn = K_bn[:3, :3]
 
                 ## predict pose
-                # consistency_mask = check_consistency(
-                #     pseudo_refined,
-                #     K_bn,
-                #     baseline=0.12,
-                #     z_thresh=0.05  # 더 낮추기
-                # )
-                # pseudo_refined = pseudo_refined * consistency_mask
+                if self.opt.consistency_mask:
+                    consistency_mask = check_consistency(
+                        pseudo_refined,
+                        K_bn,
+                        baseline=0.12,
+                        z_thresh=0.05  # 더 낮추기
+                    )
+                    pseudo_refined = pseudo_refined * consistency_mask
                 processed.append(pseudo_refined)
             processed = torch.stack(processed)
-            if do_crm:
+            if self.opt.do_crm:
                 pseudo_gt[("disp", scale)] = processed
                 gt = processed
                 
                 l2_valid_mask = inputs["mask", scale]
                 l2_valid_mask = l2_valid_mask.bool()
-
-
             else:
                 gt = pseudo_gt[("disp", scale)]
                 

@@ -343,6 +343,12 @@ class MonodepthOptions:
         self.parser.add_argument("--teacher_path",
                                  type=str,
                                  help="name of model to load")
+        self.parser.add_argument("--do_crm",
+                                 help="use crm",
+                                 action="store_true")
+        self.parser.add_argument("--consistency_mask",
+                                 help="use consistency mask",
+                                 action="store_true")
 
     def parse(self):
         self.options = self.parser.parse_args()
