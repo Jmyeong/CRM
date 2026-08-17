@@ -172,10 +172,7 @@ it is converted to the layout below. `<data_root>` is the value passed through
         ├── groundtruth/
         │   ├── image_02/0000000000.npy
         │   └── image_03/0000000000.npy
-        ├── groundtruth_transp/
-        │   ├── image_02/0000000000.npy
-        │   └── image_03/0000000000.npy
-        └── groundtruth_sparse_refined/
+        └── groundtruth_transp/
             ├── image_02/0000000000.npy
             └── image_03/0000000000.npy
 ```
@@ -188,10 +185,11 @@ The naming conventions are:
 - depth maps: NumPy arrays with the same 10-digit stem, shape `(H, W)`,
   `float32`, and depth in metres; invalid pixels should be `0`
 - `groundtruth`: regular depth used by the dataset loader
-- `groundtruth_transp`: transparent-surface depth used by student validation
-  and `evaluate.py`
-- `groundtruth_sparse_refined`: depth collected into an evaluation archive by
-  `export_gt_depth.py`
+- `groundtruth_transp`: transparent-surface sparse depth produced by densely
+  interpolating regular sparse depth, applying CRM with the Grounded-SAM mask,
+  and restoring the original sparse validity mask. It is loaded during
+  training and used for student validation and `evaluate.py`, but it is not
+  part of the optimizer loss.
 
 The loader accesses both left and right images for every stereo training item,
 so both images with the same frame number must exist even when a split line
@@ -214,9 +212,7 @@ my_capture/drive_0001_sync 1 r
 
 Create `train_files.txt`, `val_files.txt`, and `test_files.txt` under
 `splits/jbnu_stereo`. The repository's current examples can be used as a
-template. Keeping `--split jbnu_stereo` is the simplest option because
-`export_gt_depth.py` currently restricts its `--split` argument to predefined
-names.
+template. Keep `--split jbnu_stereo` when reusing these files directly.
 
 Do not put a frame in a split unless its selected RGB image, opposite stereo
 image, `groundtruth`, and `groundtruth_transp` files all exist. Sequence-level
@@ -289,50 +285,23 @@ directory:
 Train the teacher first, update the student's `--teacher_path` to the selected
 teacher checkpoint, and then train the student as described above.
 
-### 5. Export evaluation ground truth
+### 5. Evaluate using transparent-surface ground truth
 
-`export_gt_depth.py` does not create depth from LiDAR, disparity, or RGB. For
-the `jbnu_stereo` split it reads the already-created `.npy` files listed by
-`splits/jbnu_stereo/test_files.txt` and packages them into one NPZ archive.
+The standard own-dataset path does not require an additional depth directory
+or archive preprocessing. `evaluate.py` uses `test_files.txt` and loads each
+corresponding `groundtruth_transp` file directly through `JBNUDepthDataset`.
+
+Set `--data_path` and `--load_weights_folder` in the evaluation argument file,
+then run:
 
 ```bash
 cd /ssd1/jm_data/ijcas/sqldepth_crm
 conda activate crm
 
-python export_gt_depth.py \
-  --data_path /absolute/path/to/your/data_root \
-  --split jbnu_stereo
-```
-
-The current script writes:
-
-```text
-splits/jbnu_stereo/gt_depths_sz.npz
-```
-
-`evaluate_depth_config.py`, however, reads
-`splits/jbnu_stereo/gt_depths.npz`. Copy or rename the generated archive before
-using that evaluator:
-
-```bash
-cp splits/jbnu_stereo/gt_depths_sz.npz \
-   splits/jbnu_stereo/gt_depths.npz
-```
-
-After setting `--data_path` and `--load_weights_folder` in the copied
-evaluation argument file, run the NPZ-based evaluator with:
-
-```bash
-python evaluate_depth_config.py \
+CUDA_VISIBLE_DEVICES=0 PYTHONPATH=/ssd1/jm_data/ijcas \
+python evaluate.py \
   args_files/jm/jbnu_stereo/jbnu_stereo_352x640_eval.txt
 ```
-
-Important: the JBNU branch in `export_gt_depth.py` currently always reads
-`groundtruth_sparse_refined/image_02`, regardless of the `l` or `r` value in
-the split. Therefore, either use only left-camera ground truth in
-`test_files.txt`, or change the exporter to map `l` to `image_02` and `r` to
-`image_03` before exporting a mixed-side test set. The order of arrays in the
-NPZ must remain identical to the order of `test_files.txt`.
 
 The existing JBNU dataset used by the supplied argument files is located at:
 
