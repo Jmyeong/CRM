@@ -36,10 +36,10 @@ class KITTIDataset(MonoDataset):
                            [0, 0, 1, 0],
                            [0, 0, 0, 1]], dtype=np.float32)
         
-        # self.full_res_shape = (w, h)
+        self.full_res_shape = (w, h)
         # self.side_map = {"2": 2, "3": 3, "l": 2, "r": 3}
 # K是相机内参 stereo_T是相机外参，也就是转换矩阵,4行4列，16维度
-        self.full_res_shape = (640, 360)
+        # self.full_res_shape = (1242, 375)
         self.side_map = {"2": 2, "3": 3, "l": 2, "r": 3}
 
     def check_depth(self):
@@ -72,7 +72,7 @@ class KITTIRAWDataset(KITTIDataset):
     def get_image_path(self, folder, frame_index, side):
         f_str = "{:010d}{}".format(frame_index, self.img_ext)
         image_path = os.path.join(
-            self.data_path, folder, "image_0{}/data".format(self.side_map[side]), f_str)
+            self.data_path, folder, "image_0{}/data".format(self.side_map[side]), f_str).replace(".png", ".jpg")
         return image_path
 
     def get_depth(self, folder, frame_index, side, do_flip):
@@ -91,7 +91,25 @@ class KITTIRAWDataset(KITTIDataset):
             depth_gt = np.fliplr(depth_gt)
 
         return depth_gt
+    
+    def get_transp_depth(self, folder, frame_index, side, do_flip):
+            f_str = "{:010d}.npy".format(frame_index)
+            depth_path = os.path.join(
+                self.data_path,
+                folder,
+                "proj_depth/groundtruth/image_0{}".format(self.side_map[side]),
+                f_str)
+            # print(depth_path)
+            depth_gt = np.load(depth_path)
+            # depth_gt = pil.open(depth_path)
+            depth_gt = pil.fromarray(depth_gt)
+            depth_gt = depth_gt.resize(self.full_res_shape, pil.NEAREST)
+            depth_gt = np.array(depth_gt).astype(np.float32) 
 
+            if do_flip:
+                depth_gt = np.fliplr(depth_gt)
+
+            return depth_gt
 
 class KITTIOdomDataset(KITTIDataset):
     """KITTI dataset for odometry training and testing
@@ -186,12 +204,12 @@ class JBNUDepthDataset(KITTIDataset):
 
         return depth_gt
     
-    def get_depth_for_valid(self, folder, frame_index, side, do_flip):
+    def get_transp_depth(self, folder, frame_index, side, do_flip):
             f_str = "{:010d}.npy".format(frame_index)
             depth_path = os.path.join(
                 self.data_path,
                 folder,
-                "proj_depth/groundtruth/image_0{}".format(self.side_map[side]),
+                "proj_depth/groundtruth_transp/image_0{}".format(self.side_map[side]),
                 f_str)
             # print(depth_path)
             depth_gt = np.load(depth_path)

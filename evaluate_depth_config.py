@@ -147,10 +147,6 @@ def evaluate(opt):
         depth_decoder.eval()
 
         # FLOPs 계산
-        from fvcore.nn import FlopCountAnalysis
-        from ptflops import get_model_complexity_info
-        import torch.nn as nn
-        
         class Wrapper(nn.Module):
             def __init__(self):
                 super().__init__()

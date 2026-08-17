@@ -24,19 +24,11 @@ import networks
 # import uuid
 from collections import OrderedDict
 from tqdm import tqdm
-from padding import CRM, check_consistency
 
-PROJECT = "SQLdepth"
-experiment_name="Mono"
-
-class silog_loss(nn.Module):
-    def __init__(self, variance_focus):
-        super(silog_loss, self).__init__()
-        self.variance_focus = variance_focus
-
-    def forward(self, depth_est, depth_gt):
-        d = torch.log(depth_est) - torch.log(depth_gt)
-        return torch.sqrt((d ** 2).mean() - self.variance_focus * (d.mean() ** 2)) * 10.0
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from crm.module import CRM, check_consistency
+from crm.loss import silog_loss
 
 class Trainer:
     def __init__(self, options):
@@ -44,8 +36,8 @@ class Trainer:
         self.log_path = os.path.join(self.opt.log_dir, self.opt.model_name)
 
         # checking height and width are multiples of 32
-        # assert self.opt.height % 32 == 0, "'height' must be a multiple of 32"
-        # assert self.opt.width % 32 == 0, "'width' must be a multiple of 32"
+        assert self.opt.height % 32 == 0, "'height' must be a multiple of 32"
+        assert self.opt.width % 32 == 0, "'width' must be a multiple of 32"
 
         self.models_teacher = {}
         self.models_student = {}
@@ -54,10 +46,16 @@ class Trainer:
 
         self.device = torch.device("cpu" if self.opt.no_cuda else "cuda")
         self.silogloss = silog_loss(0.85).to(self.device)
+
         K = np.array([[260.8747863769531, 0, 321.9953308105469],
             [0, 260.8747863769531, 179.68511962890625],
             [0, 0, 1]
             ], dtype=np.float32)
+        
+        # K = np.array([[0.58 * 1242, 0, 0.5],
+        #     [0, 1.92 * 375, 0.5],
+        #     [0, 0, 1]], dtype=np.float32)
+
         self.crm = CRM(K).to(self.device)
 
         self.num_scales = len(self.opt.scales) # default=[0], we only perform single scale training
@@ -71,8 +69,6 @@ class Trainer:
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")
 
-        # self.models["encoder"] = networks.BaseEncoder.build(num_features=self.opt.num_features, model_dim=self.opt.model_dim)
-        # self.models["encoder"] = networks.ResnetEncoderDecoder(num_layers=self.opt.num_layers, num_features=self.opt.num_features, model_dim=self.opt.model_dim)
         if self.opt.backbone in ["resnet", "resnet_lite"]:
             self.models_teacher["encoder"] = networks.ResnetEncoderDecoder(num_layers=self.opt.num_layers, num_features=self.opt.num_features, model_dim=self.opt.model_dim)
             self.models_student["encoder"] = networks.ResnetEncoderDecoder(num_layers=self.opt.num_layers, num_features=self.opt.num_features, model_dim=self.opt.model_dim)
@@ -95,7 +91,7 @@ class Trainer:
 
         self.models_teacher["encoder"] = self.models_teacher["encoder"].cuda()
         self.models_student["encoder"] = self.models_student["encoder"].cuda()
-        # self.models["encoder"].to(self.device)
+
         self.parameters_to_train += list(self.models_student["encoder"].parameters())
 
         if self.opt.backbone.endswith("_lite"):
@@ -118,7 +114,7 @@ class Trainer:
 
         self.models_teacher["depth"] = self.models_teacher["depth"].cuda()
         self.models_student["depth"] = self.models_student["depth"].cuda()
-        # self.models["depth"].to(self.device)
+
         self.parameters_to_train += list(self.models_student["depth"].parameters())
 
 
@@ -132,28 +128,15 @@ class Trainer:
                 (k.replace("module.", ""), v) for (k, v) in torch.load(pose_net_path).items()])
             self.models_student["pose"].load_state_dict(state_dict)
 
-        # self.models["pose"].to(self.device)
         self.models_teacher["pose"] = self.models_teacher["pose"].cuda()
         self.models_student["pose"] = self.models_student["pose"].cuda()
-        # self.models["pose"] = torch.nn.DataParallel(self.models["pose"])
+
         if self.opt.diff_lr :
             print("using diff lr for depth-net and pose-net")
             self.pose_params = []
             self.pose_params += list(self.models_student["pose"].parameters())
         else :
             self.parameters_to_train += list(self.models_student["pose"].parameters())
-
-        # if self.opt.predictive_mask:
-        #     assert self.opt.disable_automasking, \
-        #         "When using predictive_mask, please disable automasking with --disable_automasking"
-
-        #     # Our implementation of the predictive masking baseline has the the same architecture
-        #     # as our depth decoder. We predict a separate mask for each source frame.
-        #     self.models["predictive_mask"] = networks.DepthDecoder(
-        #         self.models["encoder"].num_ch_enc, self.opt.scales,
-        #         num_output_channels=(len(self.opt.frame_ids) - 1))
-        #     self.models["predictive_mask"].to(self.device)
-        #     self.parameters_to_train += list(self.models["predictive_mask"].parameters())
 
         if self.opt.diff_lr :
             df_params = [{"params": self.pose_params, "lr": self.opt.learning_rate / 10},
@@ -166,15 +149,16 @@ class Trainer:
 
         if self.opt.load_weights_folder is not None:
             self.load_model()
-        print(self.opt.teacher_path)
+        print(f"teacher path:{self.opt.teacher_path}")
         encoder_path = os.path.join(self.opt.teacher_path, "encoder.pth")
         decoder_path = os.path.join(self.opt.teacher_path, "depth.pth")
+        
         checkpoint_encoder = torch.load(encoder_path)
-        checkpoint_decoder = torch.load(decoder_path)
-        encoder_ckpt = torch.load(encoder_path)
-        encoder_ckpt = {k.replace("module.", ""): v for k, v in encoder_ckpt.items()}
+        checkpoint_encoder = {k.replace("module.", ""): v for k, v in checkpoint_encoder.items()}
         model_dict = self.models_teacher["encoder"].state_dict()
-        filtered_ckpt = {k: v for k, v in encoder_ckpt.items() if k in model_dict}
+        filtered_ckpt = {k: v for k, v in checkpoint_encoder.items() if k in model_dict}
+        checkpoint_decoder = torch.load(decoder_path)
+        
         self.models_teacher["encoder"].load_state_dict(filtered_ckpt)
         self.models_teacher["depth"].load_state_dict(checkpoint_decoder)
 
@@ -265,9 +249,7 @@ class Trainer:
         self.epoch = 0
         self.step = 0
         self.start_time = time.time()
-        # run_id = f"{dt.now().strftime('%d-%h_%H-%M')}-nodebs{self.opt.batch_size}-tep{self.epoch}-lr{self.opt.learning_rate}--{uuid.uuid4()}"
-        # name = f"{experiment_name}_{run_id}"
-        # wandb.init(project=PROJECT, name=name, config=self.opt, dir='.')
+
         self.save_model()
         for self.epoch in range(self.opt.num_epochs):
             self.run_epoch()
@@ -295,10 +277,6 @@ class Trainer:
 
             duration = time.time() - before_op_time
 
-            # should_log = True
-            # if should_log and self.step % 5 == 0:
-            #     wandb.log({f"Train/reprojection_loss": losses["loss"].item()}, step=self.step)
-            # log less frequently after the first 2000 steps to save time & disk space
             early_phase = batch_idx % self.opt.log_frequency == 0 and self.step < 2000
             late_phase = self.step % 1000 == 0
 
@@ -336,7 +314,6 @@ class Trainer:
 
             pseudo_gt = self.models_teacher["depth"](features_T[0]) 
         else:
-            # Otherwise, we only feed the image with frame_id 0 through the depth encoder
             features_T = self.models_teacher["encoder"](inputs["color_aug", 0, 0])
             pseudo_gt = self.models_teacher["depth"](features_T)
             features_S = self.models_student["encoder"](inputs["color_aug", 0, 0])
@@ -346,14 +323,19 @@ class Trainer:
         
         for scale in range(self.num_scales):
             disp = outputs[("disp", scale)]
+            
             glass_mask = inputs["mask"]
             inputs["mask", scale] = F.interpolate(glass_mask, [disp.shape[2], disp.shape[3]], mode='bilinear', align_corners=False)
             inputs["mask", scale] = torch.where(inputs["mask", scale] > 0.01, 1.0, 0.0)
             processed = []
             for bn in range(pseudo_gt[("disp", scale)].size(0)):
                 pseudo = pseudo_gt[("disp", scale)][bn]
+                outputs[("teacher_depth", scale, bn)] = pseudo_gt[("disp", scale)][bn]
                 mask_bn = inputs["mask", scale][bn]
-                pseudo_refined = self.crm(pseudo, mask_bn)
+                if self.opt.do_crm:
+                    pseudo_refined, _ = self.crm(pseudo, mask_bn)
+                else:
+                    pseudo_refined = pseudo
                 if pseudo_refined.ndim < 3:
                     pseudo_refined = pseudo_refined.unsqueeze(0)
 
@@ -367,30 +349,23 @@ class Trainer:
                         pseudo_refined,
                         K_bn,
                         baseline=0.12,
-                        z_thresh=0.05  # 더 낮추기
+                        z_thresh=0.01  # 더 낮추기
                     )
                     pseudo_refined = pseudo_refined * consistency_mask
                 processed.append(pseudo_refined)
             processed = torch.stack(processed)
-            if self.opt.do_crm:
+            if self.opt.consistency_mask:
                 pseudo_gt[("disp", scale)] = processed
                 gt = processed
-                
-                l2_valid_mask = inputs["mask", scale]
-                l2_valid_mask = l2_valid_mask.bool()
             else:
                 gt = pseudo_gt[("disp", scale)]
                 
             mask = gt > 0
             valid_mask = mask & (disp > 0)
-            _, pred_depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
-
+            # _, pred_depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
+            pred_depth = disp
             outputs[("depth", 0, scale)] = pred_depth
-            loss = self.silogloss(disp[valid_mask], gt[valid_mask])
-            # print(loss)
-            # print(valid_mask.shape, inputs["mask", scale].shape)
-            # print(torch.unique(inputs["mask", scale]))
-            # print(disp.shape, gt.shape)
+            loss = self.silogloss(pred_depth[valid_mask], gt[valid_mask])
             total_loss += loss
             losses[("loss", scale)] = loss
 
@@ -402,11 +377,9 @@ class Trainer:
         """
         self.set_eval()
         try:
-            # inputs = self.val_iter.next() # for old pytorch
-            inputs = next(self.val_iter) # for new pytorch
+            inputs = next(self.val_iter)
         except StopIteration:
             self.val_iter = iter(self.val_loader)
-            # inputs = self.val_iter.next()
             inputs = next(self.val_iter)
 
         with torch.no_grad():
@@ -427,24 +400,25 @@ class Trainer:
         so is only used to give an indication of validation performance
         """
         depth_pred = outputs[("depth", 0, 0)]
+        # depth_pred = outputs[("disp", 0)]
         depth_pred = torch.clamp(F.interpolate(
-            depth_pred, [360, 640], mode="bilinear", align_corners=False), 1e-3, 50)
+            depth_pred, [360, 640], mode="bilinear", align_corners=False), 1e-3, 80)
         depth_pred = depth_pred.detach()
 
-        depth_gt = inputs["depth_gt_for_valid"]
-        _, depth_gt = disp_to_depth(depth_gt, self.opt.min_depth, self.opt.max_depth)
+        depth_gt = inputs["depth_gt_transp"]
+        # _, depth_gt = disp_to_depth(depth_gt, self.opt.min_depth, self.opt.max_depth)
         mask = depth_gt > 0
 
         # garg/eigen crop
-        crop_mask = torch.zeros_like(mask)
-        crop_mask[:, :, 153:371, 44:1197] = 1
+        # crop_mask = torch.zeros_like(mask)
+        # crop_mask[:, :, 153:371, 44:1197] = 1
         # mask = mask * crop_mask
 
         depth_gt = depth_gt[mask]
         depth_pred = depth_pred[mask]
         depth_pred *= torch.median(depth_gt) / torch.median(depth_pred)
 
-        depth_pred = torch.clamp(depth_pred, min=1e-3, max=50)
+        depth_pred = torch.clamp(depth_pred, min=1e-3, max=80)
 
         depth_errors = compute_depth_errors(depth_gt, depth_pred)
 
@@ -478,18 +452,21 @@ class Trainer:
                         inputs[("color", frame_id, s)][j].data, self.step)
 
                 writer.add_image(
-                    "disp_{}/{}".format(s, j),
-                    normalize_image(outputs[("disp", s)][j]), self.step)
+                    "teacher_depth{}/{}".format(s, j),
+                    normalize_image(outputs[("teacher_depth", s, j)]), self.step)
                 writer.add_image(
                     "depth_{}/{}".format(s, j),
                     normalize_image(outputs[('depth', 0, s)][j]), self.step)
                 writer.add_image(
-                    "gt_{}/{}".format(s, j),
+                    "pseudo_gt_{}/{}".format(s, j),
                     normalize_image(pseudo_gt[("disp", s)][j]), self.step)
                 writer.add_image(
-                    "gt_for_valid_{}/{}".format(s, j),
-                    normalize_image(inputs[("depth_gt_for_valid")][j]), self.step)
-
+                    "gt_transp_{}/{}".format(s, j),
+                    normalize_image(inputs[("depth_gt_transp")][j]), self.step)
+                writer.add_image(
+                    "CRM_mask{}/{}".format(s, j),
+                    normalize_image(inputs["mask", s][j]), self.step)
+                
     def save_opts(self):
         """Save options to disk so we know what we ran this experiment with
         """
@@ -510,13 +487,11 @@ class Trainer:
 
         for model_name, model in self.models_student.items():
             save_path = os.path.join(save_folder, "{}.pth".format(model_name))
-            # for nn.DataParallel models, you must use model.module.state_dict() instead of model.state_dict()
             if model_name == 'pose':
                to_save = model.state_dict()
             else:
                 to_save = model.state_dict()
             if model_name == 'encoder':
-                # save the sizes - these are needed at prediction time
                 to_save['height'] = self.opt.height
                 to_save['width'] = self.opt.width
                 to_save['use_stereo'] = self.opt.use_stereo

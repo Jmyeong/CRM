@@ -1,6 +1,6 @@
---data_path /ssd1/jm_data/depth/ssl/monodepth2/jbnu_stereo
---log_dir ./logs
---model_name jbnu_stereo_resnet_320x1024_student_do_crm
+--data_path /ssd1/jm_data/ijcas/data/jbnu_stereo
+--log_dir ./logs/revision/ablation/consistency_mask_001
+--model_name jbnu_stereo_consistency
 --dataset jbnu_stereo 
 --eval_split jbnu_stereo
 --backbone resnet_lite
@@ -20,11 +20,13 @@
 --diff_lr
 --use_stereo
 --frame_ids 0
---load_weights_folder ./pretrained/resnet_320x1024/models/weights_24/
+--load_weights_folder ./pretrained/resnet_320x1024/models/weights_24
 --split jbnu_stereo
 --load_pretrained_model
---load_pt_folder ./pretrained/resnet_320x1024/models/weights_24/
+--load_pt_folder ./pretrained/resnet_320x1024/models/weights_24
 --learning_rate 1e-6
---teacher_path /ssd1/jm_data/depth/ssl/SfMNeXt-Impl_CRM/teacher/jbnu_stereo_resnet_320x1024/models/weights_24/
+--teacher_path /ssd1/jm_data/ijcas/sqldepth_crm/logs/revision/teacher/models/weights_19
+--log_frequency 250
 --do_crm
 --consistency_mask
+--png

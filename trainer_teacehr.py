@@ -19,16 +19,11 @@ from layers import *
 
 import datasets
 import networks
-# import wandb
-# from datetime import datetime as dt
-# import uuid
+
 from collections import OrderedDict
 from tqdm import tqdm
 
-PROJECT = "SQLdepth"
-experiment_name="Mono"
-
-class Trainer:
+class TeacherTrainer:
     def __init__(self, options):
         self.opt = options
         self.log_path = os.path.join(self.opt.log_dir, self.opt.model_name)
@@ -53,8 +48,6 @@ class Trainer:
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")
 
-        # self.models["encoder"] = networks.BaseEncoder.build(num_features=self.opt.num_features, model_dim=self.opt.model_dim)
-        # self.models["encoder"] = networks.ResnetEncoderDecoder(num_layers=self.opt.num_layers, num_features=self.opt.num_features, model_dim=self.opt.model_dim)
         if self.opt.backbone in ["resnet", "resnet_lite"]:
             self.models["encoder"] = networks.ResnetEncoderDecoder(num_layers=self.opt.num_layers, num_features=self.opt.num_features, model_dim=self.opt.model_dim)
         elif self.opt.backbone == "resnet18_lite":
@@ -73,7 +66,6 @@ class Trainer:
 
         self.models["encoder"] = self.models["encoder"].cuda()
         self.models["encoder"] = torch.nn.DataParallel(self.models["encoder"]) 
-        # self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters())
 
         if self.opt.backbone.endswith("_lite"):
@@ -92,7 +84,6 @@ class Trainer:
 
         self.models["depth"] = self.models["depth"].cuda()
         self.models["depth"] = torch.nn.DataParallel(self.models["depth"])
-        # self.models["depth"].to(self.device)
         self.parameters_to_train += list(self.models["depth"].parameters())
 
 
@@ -104,27 +95,13 @@ class Trainer:
                 (k.replace("module.", ""), v) for (k, v) in torch.load(pose_net_path).items()])
             self.models["pose"].load_state_dict(state_dict)
 
-        # self.models["pose"].to(self.device)
         self.models["pose"] = self.models["pose"].cuda()
-        # self.models["pose"] = torch.nn.DataParallel(self.models["pose"])
         if self.opt.diff_lr :
             print("using diff lr for depth-net and pose-net")
             self.pose_params = []
             self.pose_params += list(self.models["pose"].parameters())
         else :
             self.parameters_to_train += list(self.models["pose"].parameters())
-
-        # if self.opt.predictive_mask:
-        #     assert self.opt.disable_automasking, \
-        #         "When using predictive_mask, please disable automasking with --disable_automasking"
-
-        #     # Our implementation of the predictive masking baseline has the the same architecture
-        #     # as our depth decoder. We predict a separate mask for each source frame.
-        #     self.models["predictive_mask"] = networks.DepthDecoder(
-        #         self.models["encoder"].num_ch_enc, self.opt.scales,
-        #         num_output_channels=(len(self.opt.frame_ids) - 1))
-        #     self.models["predictive_mask"].to(self.device)
-        #     self.parameters_to_train += list(self.models["predictive_mask"].parameters())
 
         if self.opt.diff_lr :
             df_params = [{"params": self.pose_params, "lr": self.opt.learning_rate / 10},
@@ -141,8 +118,7 @@ class Trainer:
         print("Training model named:\n  ", self.opt.model_name)
         print("Models and tensorboard events files are saved to:\n  ", self.opt.log_dir) # default to ~/tmp/mdp/train
         print("Training is using:\n  ", self.device)
-
-        # data
+        
         datasets_dict = {"kitti": datasets.KITTIRAWDataset,
                          "kitti_odom": datasets.KITTIOdomDataset,
                          "cityscapes_preprocessed": datasets.CityscapesPreprocessedDataset,
@@ -154,7 +130,7 @@ class Trainer:
         train_filenames = readlines(fpath.format("train"))
         val_filenames = readlines(fpath.format("val"))
         img_ext = '.png' if self.opt.png else '.jpg'
-
+        
         num_train_samples = len(train_filenames)
         self.num_total_steps = num_train_samples // self.opt.batch_size * self.opt.num_epochs
 
@@ -217,9 +193,6 @@ class Trainer:
         self.epoch = 0
         self.step = 0
         self.start_time = time.time()
-        # run_id = f"{dt.now().strftime('%d-%h_%H-%M')}-nodebs{self.opt.batch_size}-tep{self.epoch}-lr{self.opt.learning_rate}--{uuid.uuid4()}"
-        # name = f"{experiment_name}_{run_id}"
-        # wandb.init(project=PROJECT, name=name, config=self.opt, dir='.')
         self.save_model()
         for self.epoch in range(self.opt.num_epochs):
             self.run_epoch()
@@ -230,8 +203,6 @@ class Trainer:
     def run_epoch(self):
         """Run a single epoch of training and validation
         """
-        # self.model_lr_scheduler.step()
-
         print("Training")
         self.set_train()
 
@@ -247,10 +218,6 @@ class Trainer:
 
             duration = time.time() - before_op_time
 
-            # should_log = True
-            # if should_log and self.step % 5 == 0:
-            #     wandb.log({f"Train/reprojection_loss": losses["loss"].item()}, step=self.step)
-            # log less frequently after the first 2000 steps to save time & disk space
             early_phase = batch_idx % self.opt.log_frequency == 0 and self.step < 2000
             late_phase = self.step % 1000 == 0
 
@@ -269,12 +236,9 @@ class Trainer:
         """Pass a minibatch through the network and generate images and losses
         """
         for key, ipt in inputs.items():
-            # print(ipt)
             inputs[key] = ipt.to(self.device)
 
         if self.opt.pose_model_type == "shared": # default no
-            # If we are using a shared encoder for both depth and pose (as advocated
-            # in monodepthv1), then all images are fed separately through the depth encoder.
             all_color_aug = torch.cat([inputs[("color_aug", i, 0)] for i in self.opt.frame_ids])
             all_features = self.models["encoder"](all_color_aug)
             all_features = [torch.split(f, self.opt.batch_size) for f in all_features]
@@ -285,14 +249,12 @@ class Trainer:
 
             outputs = self.models["depth"](features[0])
         else:
-            # Otherwise, we only feed the image with frame_id 0 through the depth encoder
             features = self.models["encoder"](inputs["color_aug", 0, 0])
 
             outputs = self.models["depth"](features)
 
         if self.opt.predictive_mask: # default no
             outputs["predictive_mask"] = self.models["predictive_mask"](features)
-        # self.use_pose_net = not (self.opt.use_stereo and self.opt.frame_ids == [0])
         if self.use_pose_net: # default=True
             outputs.update(self.predict_poses(inputs, features))
 
@@ -307,10 +269,6 @@ class Trainer:
         outputs = {}
 
         if self.num_pose_frames == 2:
-            # In this setting, we compute the pose to each source frame via a
-            # separate forward pass through the pose network.
-
-            # select what features the pose network takes as input
             if self.opt.pose_model_type == "shared":
                 pose_feats = {f_i: features[f_i] for f_i in self.opt.frame_ids}
             else:
@@ -318,7 +276,6 @@ class Trainer:
 
             for f_i in self.opt.frame_ids[1:]:
                 if f_i != "s":
-                    # To maintain ordering we always pass frames in temporal order
                     if f_i < 0:
                         pose_inputs = [pose_feats[f_i], pose_feats[0]]
                     else:
@@ -330,18 +287,13 @@ class Trainer:
                         pose_inputs = torch.cat(pose_inputs, 1)
 
                     axisangle, translation = self.models["pose"](pose_inputs)
-                    # print(axisangle.shape)
-                    # axisangle:[12, 1, 1, 3]  translation:[12, 1, 1, 3]
                     outputs[("axisangle", 0, f_i)] = axisangle
                     outputs[("translation", 0, f_i)] = translation
 
-                    # Invert the matrix if the frame id is negative
                     outputs[("cam_T_cam", 0, f_i)] = transformation_from_parameters(
                         axisangle[:, 0], translation[:, 0], invert=(f_i < 0))
-                    # outputs[("cam_T_cam", 0, f_i)]: [12, 4, 4]
 
         else:
-            # Here we input all frames to the pose net (and predict all poses) together
             if self.opt.pose_model_type in ["separate_resnet", "posecnn"]:
                 pose_inputs = torch.cat(
                     [inputs[("color_aug", i, 0)] for i in self.opt.frame_ids if i != "s"], 1)
@@ -368,11 +320,9 @@ class Trainer:
         """
         self.set_eval()
         try:
-            # inputs = self.val_iter.next() # for old pytorch
             inputs = next(self.val_iter) # for new pytorch
         except StopIteration:
             self.val_iter = iter(self.val_loader)
-            # inputs = self.val_iter.next()
             inputs = next(self.val_iter)
 
         with torch.no_grad():
@@ -401,7 +351,7 @@ class Trainer:
 
                 depth = disp
             # _, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
-            # print(torch.unique(depth))
+            
             outputs[("depth", 0, scale)] = depth
 
             for i, frame_id in enumerate(self.opt.frame_ids[1:]):
@@ -427,7 +377,6 @@ class Trainer:
                     depth, inputs[("inv_K", source_scale)])
                 pix_coords = self.project_3d[source_scale](
                     cam_points, inputs[("K", source_scale)], T)
-                # pix_coords: [bs, h, w, 2]
 
                 outputs[("sample", frame_id, scale)] = pix_coords
 
@@ -559,22 +508,24 @@ class Trainer:
         """
         depth_pred = outputs[("depth", 0, 0)]
         depth_pred = torch.clamp(F.interpolate(
-            depth_pred, [360, 640], mode="bilinear", align_corners=False), 1e-3, 50)
+            depth_pred, [360, 640], mode="bilinear", align_corners=False), 1e-3, 50) # 375x1242
         depth_pred = depth_pred.detach()
 
         depth_gt = inputs["depth_gt"]
         mask = depth_gt > 0
-
+        print(torch.unique(depth_pred))
+        print(torch.unique(depth_gt))
+        print()
         # garg/eigen crop
-        crop_mask = torch.zeros_like(mask)
-        crop_mask[:, :, 153:371, 44:1197] = 1
-        mask = mask * crop_mask
+        # crop_mask = torch.zeros_like(mask)
+        # crop_mask[:, :, 153:371, 44:1197] = 1
+        # mask = mask * crop_mask
 
         depth_gt = depth_gt[mask]
         depth_pred = depth_pred[mask]
         depth_pred *= torch.median(depth_gt) / torch.median(depth_pred)
 
-        depth_pred = torch.clamp(depth_pred, min=1e-3, max=50)
+        depth_pred = torch.clamp(depth_pred, min=1e-3, max=80)
 
         depth_errors = compute_depth_errors(depth_gt, depth_pred)
 

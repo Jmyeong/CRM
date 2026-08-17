@@ -1,0 +1,29 @@
+--data_path /ssd1/jm_data/ijcas/data/eigen_zhou
+--log_dir ./logs/revision
+--model_name eigen_zhou_student
+--dataset kitti 
+--eval_split eigen
+--backbone resnet_lite
+--height 320
+--width 1024
+--batch_size 8
+--num_epochs 25
+--scheduler_step_size 15
+--model_dim 32
+--patch_size 20
+--dim_out 128
+--query_nums 128
+--num_features 256
+--num_layers 50
+--min_depth 0.01
+--max_depth 80.0
+--diff_lr
+--use_stereo
+--frame_ids 0
+--split eigen_zhou
+--learning_rate 1e-4
+--teacher_path /ssd1/jm_data/ijcas/sqldepth_crm/logs/revision/eigen_zhou_teacher/models/weights_19/
+--log_frequency 250
+--eval_stereo
+--do_crm
+--consistency_mask

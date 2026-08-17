@@ -72,8 +72,7 @@ class MonodepthOptions:
                                           "cityscapes_preprocessed", "mc_dataset", "mc_mini_dataset", "nyu_raw", "jbnu_stereo"])
         self.parser.add_argument("--png",
                                  help="if set, trains from raw KITTI png files (instead of jpgs)",
-                                 action="store_true",
-                                 default='.png')
+                                 action="store_true")
         self.parser.add_argument("--dim_out",
                                  type=int,
                                  help="number of bins",
@@ -339,7 +338,9 @@ class MonodepthOptions:
                                  help="if set will perform the flipping post processing "
                                       "from the original monodepth paper",
                                  action="store_true")
-        
+        self.parser.add_argument("--train_teacher",
+                                 help="teacher training mode",
+                                 action="store_true")
         self.parser.add_argument("--teacher_path",
                                  type=str,
                                  help="name of model to load")

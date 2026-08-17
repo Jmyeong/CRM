@@ -1,6 +1,4 @@
---data_path /ssd1/jm_data/depth/ssl/monodepth2/jbnu_stereo
---log_dir ./logs
---model_name jbnu_stereo_resnet_320x1024_student_no_crm
+--data_path /ssd1/jm_data/ijcas/data/jbnu_stereo
 --dataset jbnu_stereo 
 --eval_split jbnu_stereo
 --backbone resnet_lite
@@ -21,6 +19,7 @@
 --use_stereo
 --frame_ids 0
 --eval_stereo
---load_weights_folder ../SQLdepth_logs/jbnu_stereo_resnet_320x1024_student_no_crm/models/weights_24/
+--load_weights_folder /ssd1/jm_data/ijcas/sqldepth_crm/logs/revision/teacher/models/weights_24
 --split jbnu_stereo
 --save_pred_disps
+--png

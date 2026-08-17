@@ -10,16 +10,16 @@ import os
 import random
 import numpy as np
 import copy
-from PIL import Image  # using pillow-simd for increased speed
+from PIL import Image  
 
 import torch
 import torch.utils.data as data
 from torchvision import transforms
 import cv2
 
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 def pil_loader(path):
-    # open path as file to avoid ResourceWarning
-    # (https://github.com/python-pillow/Pillow/issues/835)
     with open(path, 'rb') as f:
         with Image.open(f) as img:
             return img.convert('RGB')
@@ -64,8 +64,6 @@ class MonoDataset(data.Dataset):
         self.loader = pil_loader
         self.to_tensor = transforms.ToTensor()
 
-        # We need to specify augmentations differently in newer versions of torchvision.
-        # We first try the newer tuple version; if this fails we fall back to scalars
         try:
             self.brightness = (0.8, 1.2)
             self.contrast = (0.8, 1.2)
@@ -88,12 +86,6 @@ class MonoDataset(data.Dataset):
         self.load_depth = self.check_depth()
 
     def preprocess(self, inputs, color_aug):
-        """Resize colour images to the required scales and augment if required
-
-        We create the color_aug object in advance and apply the same augmentation to all
-        images in this item. This ensures that all images input to the pose network receive the
-        same augmentation.
-        """
         for k in list(inputs):
             frame = inputs[k]
             if "color" in k:
@@ -112,29 +104,6 @@ class MonoDataset(data.Dataset):
         return len(self.filenames)
 
     def __getitem__(self, index):
-        """Returns a single training item from the dataset as a dictionary.
-
-        Values correspond to torch tensors.
-        Keys in the dictionary are either strings or tuples:
-
-            ("color", <frame_id>, <scale>)          for raw colour images,
-            ("color_aug", <frame_id>, <scale>)      for augmented colour images,
-            ("K", scale) or ("inv_K", scale)        for camera intrinsics,
-            "stereo_T"                              for camera extrinsics, and
-            "depth_gt"                              for ground truth depth maps.
-
-        <frame_id> is either:
-            an integer (e.g. 0, -1, or 1) representing the temporal step relative to 'index',
-        or
-            "s" for the opposite image in the stereo pair.
-
-        <scale> is an integer representing the scale of the image relative to the fullsize image:
-            -1      images at native resolution as loaded from disk
-            0       images resized to (self.width,      self.height     )
-            1       images resized to (self.width // 2, self.height // 2)
-            2       images resized to (self.width // 4, self.height // 4)
-            3       images resized to (self.width // 8, self.height // 8)
-        """
         inputs = {}
 
         do_color_aug = self.is_train and random.random() > 0.5
@@ -154,19 +123,16 @@ class MonoDataset(data.Dataset):
             side = None
 
         for i in self.frame_idxs:
-            # frame_idxs: [0,-1,1]
             if i == "s":
                 other_side = {"r": "l", "l": "r"}[side]
                 inputs[("color", i, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
             else:
                 inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
 
-        # adjusting intrinsics to match each scale in the pyramid
         for scale in range(self.num_scales):
             K = self.K.copy()
 
             K[0, :] *= self.width // (2 ** scale)
-            # 这里是为了做norm，内参矩阵必须是归一化的
             K[1, :] *= self.height // (2 ** scale)
 
             inv_K = np.linalg.pinv(K)
@@ -185,17 +151,15 @@ class MonoDataset(data.Dataset):
             del inputs[("color", i, -1)]
             del inputs[("color_aug", i, -1)]
 
-        # if self.load_depth:
-        # print(folder, frame_index, side)
         depth_gt = self.get_depth(folder, frame_index, side, do_flip)
-        depth_gt_for_valid = self.get_depth_for_valid(folder, frame_index, side, do_flip)
+        
+        depth_gt_transp = self.get_transp_depth(folder, frame_index, side, do_flip)
         inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
         inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
-        inputs["depth_gt_for_valid"] = np.expand_dims(depth_gt_for_valid, 0)
-        inputs["depth_gt_for_valid"] = torch.from_numpy(inputs["depth_gt_for_valid"].astype(np.float32))
+        inputs["depth_gt_transp"] = np.expand_dims(depth_gt_transp, 0)
+        inputs["depth_gt_transp"] = torch.from_numpy(inputs["depth_gt_transp"].astype(np.float32))
 
-        # print(inputs["depth_gt"].shape)
-        if "s" in self.frame_idxs:
+        if "s" in self.frame_idxs or not self.is_train:
             stereo_T = np.eye(4, dtype=np.float32)
             baseline_sign = -1 if do_flip else 1
             side_sign = -1 if side == "l" else 1
@@ -204,28 +168,21 @@ class MonoDataset(data.Dataset):
             inputs["stereo_T"] = torch.from_numpy(stereo_T)
             
             side_folder = 'image_02' if side == 'l' else 'image_03'
-
-            # print(folder)
-            mask_folder = os.path.join("/ssd1/jm_data/Grounded-Segment-Anything/outputs", folder, side_folder, "mask"
+            datasets = os.path.basename(self.data_path)
+            mask_folder = os.path.join(project_root, "preprocessing/post_outputs", datasets, folder, side_folder, "data"
                                         , str(frame_index).zfill(10) + '.png')
-            # print(mask_folder)
-            # try:
             if os.path.exists(mask_folder):
                 mask = cv2.imread(mask_folder, cv2.IMREAD_GRAYSCALE)
-                mask = cv2.resize(mask, (640, 360))
-            # except FileNotFoundError:
-            #     raise FileNotFoundError("Warning - cannot find mask for {} {} {}! "
-            #                             "Either specify the correct path in option "
-            #                             "--mask_path, or run precompute_depth_hints.py to"
-            #                             "train with depth hints".format(folder, side_folder,
-            #                                                             frame_index))
+                mask = cv2.resize(mask, (360, 640)) # 375 1242
+                # print(np.unique(mask))
+
             else:
                 mask = np.zeros((360, 640))
             if do_flip:
                 mask = np.fliplr(mask)
-            mask = np.where(mask > 50, 255, 0)
+            # mask = np.where(mask > 50, 255, 0)
             mask = torch.from_numpy(mask.copy()).float().unsqueeze(0)
-            inputs['mask'] = (mask > 0).float()
+            inputs['mask'] = mask            
         else:
             inputs['mask'] = 0
             
@@ -240,5 +197,5 @@ class MonoDataset(data.Dataset):
     def get_depth(self, folder, frame_index, side, do_flip):
         raise NotImplementedError
     
-    def get_depth_for_valid(self, folder, frame_index, side, do_flip):
+    def get_transp_depth(self, folder, frame_index, side, do_flip):
         raise NotImplementedError
