@@ -11,7 +11,7 @@ wandb
 
 /pred_results/
 
-calc_GMACs.py
+cal_GMACs.py
 calc_layers.py
 CKA_visualize.py
 CRM_eval.py

@@ -3,6 +3,10 @@
 Training code for self-supervised depth estimation in transparent environments.
 This repository accompanies **Knowledge Distillation with Context-aware
 Refinement for Self-Supervised Depth Estimation in Transparent Environments**.
+This project is built upon
+[hisfog/SfMNeXt-Impl](https://github.com/hisfog/SfMNeXt-Impl), with additional
+development for context-aware refinement, knowledge distillation, and training
+in transparent environments.
 
 <div align="left">
   <img src="images/Overview.png" alt="CRM overview" width="800" />
@@ -163,6 +167,14 @@ original project used
 [Grounded-SAM](https://github.com/IDEA-Research/Grounded-Segment-Anything) to
 prepare these masks; Grounded-SAM is a separate preprocessing environment and
 is not required to launch training when masks have already been generated.
+
+## Acknowledgements
+
+This repository is based on
+[SfMNeXt-Impl](https://github.com/hisfog/SfMNeXt-Impl) by
+[hisfog](https://github.com/hisfog). We thank the authors for making their
+implementation publicly available. Please also refer to the original project
+for its documentation, citations, and license terms.
 
 ## Citation
 
