@@ -16,3 +16,4 @@ calc_layers.py
 CKA_visualize.py
 CRM_eval.py
 evaluate_depth_config copy.py
+generate_transparent_gt.py

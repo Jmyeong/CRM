@@ -153,20 +153,192 @@ inside `tmux` or `screen`. TensorBoard can be started with:
 tensorboard --logdir /ssd1/jm_data/ijcas/sqldepth_crm/logs --port 6006
 ```
 
-## Dataset preparation
+## Using your own stereo dataset
 
-The JBNU argument files expect the dataset at:
+The current JBNU loader can be reused for another rectified stereo dataset if
+it is converted to the layout below. `<data_root>` is the value passed through
+`--data_path`; its final directory name is shown as `<dataset_name>`.
+
+```text
+<data_root>/
+└── <sequence>/
+    ├── image_02/data/
+    │   ├── 0000000000.png
+    │   └── 0000000001.png
+    ├── image_03/data/
+    │   ├── 0000000000.png
+    │   └── 0000000001.png
+    └── proj_depth/
+        ├── groundtruth/
+        │   ├── image_02/0000000000.npy
+        │   └── image_03/0000000000.npy
+        ├── groundtruth_transp/
+        │   ├── image_02/0000000000.npy
+        │   └── image_03/0000000000.npy
+        └── groundtruth_sparse_refined/
+            ├── image_02/0000000000.npy
+            └── image_03/0000000000.npy
+```
+
+The naming conventions are:
+
+- `image_02`: left image, represented by `l` in a split file
+- `image_03`: right image, represented by `r` in a split file
+- RGB images: zero-padded 10-digit PNG files
+- depth maps: NumPy arrays with the same 10-digit stem, shape `(H, W)`,
+  `float32`, and depth in metres; invalid pixels should be `0`
+- `groundtruth`: regular depth used by the dataset loader
+- `groundtruth_transp`: transparent-surface depth used by student validation
+  and `evaluate.py`
+- `groundtruth_sparse_refined`: depth collected into an evaluation archive by
+  `export_gt_depth.py`
+
+The loader accesses both left and right images for every stereo training item,
+so both images with the same frame number must exist even when a split line
+contains only one side.
+
+### 1. Prepare the split files
+
+Each line has the following format:
+
+```text
+<sequence relative to data_root> <integer frame index> <l|r>
+```
+
+For example:
+
+```text
+my_capture/drive_0001_sync 0 l
+my_capture/drive_0001_sync 1 r
+```
+
+Create `train_files.txt`, `val_files.txt`, and `test_files.txt` under
+`splits/jbnu_stereo`. The repository's current examples can be used as a
+template. Keeping `--split jbnu_stereo` is the simplest option because
+`export_gt_depth.py` currently restricts its `--split` argument to predefined
+names.
+
+Do not put a frame in a split unless its selected RGB image, opposite stereo
+image, `groundtruth`, and `groundtruth_transp` files all exist. Sequence-level
+train/validation/test separation is recommended to prevent frames from the
+same drive leaking between sets.
+
+### 2. Prepare transparent-object masks
+
+Masks are not read from `<data_root>`. `datasets/mono_dataset.py` expects them
+at the following sibling preprocessing path:
+
+```text
+/ssd1/jm_data/ijcas/preprocessing/post_outputs/
+└── <dataset_name>/
+    └── <sequence>/
+        ├── image_02/data/0000000000.png
+        └── image_03/data/0000000000.png
+```
+
+For example, if `--data_path /data/my_stereo`, `<dataset_name>` is
+`my_stereo`. Masks are single-channel PNG images. Missing masks are silently
+replaced by all-zero masks, so training can run while CRM receives no
+transparent region. Verify the mask path before a full run.
+
+The original project used
+[Grounded-SAM](https://github.com/IDEA-Research/Grounded-Segment-Anything) to
+prepare masks. Grounded-SAM is a separate preprocessing environment and is not
+needed after masks have been generated. `generate_transparent_gt.py` currently
+only lists `.npy` files; it does not generate transparent depth maps.
+
+### 3. Set the camera parameters
+
+The existing code contains JBNU-specific calibration values and cannot be used
+unchanged for a camera with different intrinsics or baseline. Update all of the
+following:
+
+- normalized `K` and `full_res_shape` in `datasets/kitti_dataset.py`
+- stereo baseline (`0.12` metres) in `datasets/mono_dataset.py`
+- pixel-space `K` and the CRM baseline (`0.12`) in `trainer.py`
+- `STEREO_SCALE_FACTOR` in the evaluation script when metric stereo depth is
+  required
+
+Use intrinsics corresponding to the image resolution loaded by the dataset.
+The current JBNU values assume 640 x 360 source images. Also check the
+hard-coded mask resize in `datasets/mono_dataset.py` when using a different
+resolution.
+
+### 4. Update the argument files
+
+Copy the JBNU teacher, student, and evaluation argument files, then change at
+least:
+
+```text
+--data_path /absolute/path/to/your/data_root
+--model_name <new experiment name>
+--log_dir <new log directory>
+```
+
+Keep these values when reusing `JBNUDepthDataset` and the existing split
+directory:
+
+```text
+--dataset jbnu_stereo
+--split jbnu_stereo
+--eval_split jbnu_stereo
+--use_stereo
+--frame_ids 0
+```
+
+Train the teacher first, update the student's `--teacher_path` to the selected
+teacher checkpoint, and then train the student as described above.
+
+### 5. Export evaluation ground truth
+
+`export_gt_depth.py` does not create depth from LiDAR, disparity, or RGB. For
+the `jbnu_stereo` split it reads the already-created `.npy` files listed by
+`splits/jbnu_stereo/test_files.txt` and packages them into one NPZ archive.
+
+```bash
+cd /ssd1/jm_data/ijcas/sqldepth_crm
+conda activate crm
+
+python export_gt_depth.py \
+  --data_path /absolute/path/to/your/data_root \
+  --split jbnu_stereo
+```
+
+The current script writes:
+
+```text
+splits/jbnu_stereo/gt_depths_sz.npz
+```
+
+`evaluate_depth_config.py`, however, reads
+`splits/jbnu_stereo/gt_depths.npz`. Copy or rename the generated archive before
+using that evaluator:
+
+```bash
+cp splits/jbnu_stereo/gt_depths_sz.npz \
+   splits/jbnu_stereo/gt_depths.npz
+```
+
+After setting `--data_path` and `--load_weights_folder` in the copied
+evaluation argument file, run the NPZ-based evaluator with:
+
+```bash
+python evaluate_depth_config.py \
+  args_files/jm/jbnu_stereo/jbnu_stereo_352x640_eval.txt
+```
+
+Important: the JBNU branch in `export_gt_depth.py` currently always reads
+`groundtruth_sparse_refined/image_02`, regardless of the `l` or `r` value in
+the split. Therefore, either use only left-camera ground truth in
+`test_files.txt`, or change the exporter to map `l` to `image_02` and `r` to
+`image_03` before exporting a mixed-side test set. The order of arrays in the
+NPZ must remain identical to the order of `test_files.txt`.
+
+The existing JBNU dataset used by the supplied argument files is located at:
 
 ```text
 /ssd1/jm_data/ijcas/data/jbnu_stereo
 ```
-
-Training split files are under `splits/jbnu_stereo`. Transparent-object masks
-must already be present in the layout expected by the dataset loader. The
-original project used
-[Grounded-SAM](https://github.com/IDEA-Research/Grounded-Segment-Anything) to
-prepare these masks; Grounded-SAM is a separate preprocessing environment and
-is not required to launch training when masks have already been generated.
 
 ## Acknowledgements
 
