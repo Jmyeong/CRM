@@ -10,3 +10,9 @@ wandb
 /logs/
 
 /pred_results/
+
+calc_GMACs.py
+calc_layers.py
+CKA_visualize.py
+CRM_eval.py
+evaluate_depth_config copy.py
