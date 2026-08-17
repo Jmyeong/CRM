@@ -11,6 +11,7 @@ in transparent environments.
 <div align="left">
   <img src="images/Overview.png" alt="CRM overview" width="800" />
 </div>
+[project page](url)
 
 ## JBNU stereo: environment setup on this server
 
